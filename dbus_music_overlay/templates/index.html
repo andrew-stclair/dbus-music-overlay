@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D-Bus Music OBS Overlay</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: transparent !important;
+            margin: 0;
+            padding: 24px;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            color: white;
+        }
+
+        .glass-card {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        .container-wrapper {
+            transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform-origin: bottom left;
+        }
+
+        .hidden-state {
+            opacity: 0;
+            transform: translateY(40px) scale(0.95);
+            pointer-events: none;
+        }
+
+        .visible-state {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        .art-image {
+            transition: opacity 0.3s ease;
+        }
+
+        .text-truncate {
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="flex items-end h-screen w-screen">
+
+    <div id="overlay-container" class="container-wrapper hidden-state flex w-full max-w-sm glass-card rounded-2xl p-4 gap-4 items-center">
+        <!-- Album Art -->
+        <div class="relative w-20 h-20 shrink-0 shadow-lg rounded-xl overflow-hidden bg-slate-800 border border-slate-700/50">
+            <img id="album-art" src="" alt="Album Art" class="art-image w-full h-full object-cover opacity-0">
+            <!-- Fallback icon if no art -->
+            <div id="art-fallback" class="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300">
+                <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Metadata -->
+        <div class="flex flex-col flex-1 min-w-0 justify-center">
+            <div class="flex items-center gap-2 mb-1">
+                <div class="flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500/20">
+                    <div id="status-indicator" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+                </div>
+                <span id="status-text" class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Playing</span>
+            </div>
+            <h1 id="track-title" class="text-lg font-bold text-slate-100 text-truncate leading-tight mb-1">Unknown Title</h1>
+            <h2 id="track-artist" class="text-sm font-medium text-slate-400 text-truncate">Unknown Artist</h2>
+        </div>
+    </div>
+
+    <script>
+        const container = document.getElementById('overlay-container');
+        const titleEl = document.getElementById('track-title');
+        const artistEl = document.getElementById('track-artist');
+        const artEl = document.getElementById('album-art');
+        const fallbackEl = document.getElementById('art-fallback');
+        const statusText = document.getElementById('status-text');
+        const statusIndicator = document.getElementById('status-indicator');
+
+        let ws;
+        let reconnectTimeout;
+
+        function connect() {
+            // Determine WS URL based on current host
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                console.log('Connected to WebSocket server');
+                clearTimeout(reconnectTimeout);
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                updateUI(data);
+            };
+
+            ws.onclose = () => {
+                console.log('Disconnected. Reconnecting in 3s...');
+                hideOverlay();
+                reconnectTimeout = setTimeout(connect, 3000);
+            };
+            
+            ws.onerror = (err) => {
+                console.error('WebSocket error:', err);
+                ws.close();
+            };
+        }
+
+        function updateUI(data) {
+            if (!data.status || data.status === 'Stopped') {
+                hideOverlay();
+                return;
+            }
+
+            // Update Text
+            titleEl.textContent = data.title || 'Unknown Title';
+            artistEl.textContent = data.artist || 'Unknown Artist';
+
+            // Update Image
+            if (data.artUrl) {
+                // If it's a file:// URL, standard browsers might block it from an http context.
+                // However, OBS Browser Source allows local file access if configured, 
+                // or we might need to serve it. But let's set it anyway.
+                let artUrl = data.artUrl;
+                // If the url starts with file://, it might need to be url-encoded
+                
+                artEl.src = artUrl;
+                artEl.onload = () => {
+                    artEl.classList.remove('opacity-0');
+                    fallbackEl.classList.add('opacity-0');
+                };
+                artEl.onerror = () => {
+                    artEl.classList.add('opacity-0');
+                    fallbackEl.classList.remove('opacity-0');
+                }
+            } else {
+                artEl.classList.add('opacity-0');
+                fallbackEl.classList.remove('opacity-0');
+            }
+
+            // Status indication
+            if (data.status === 'Playing') {
+                statusText.textContent = 'Playing';
+                statusText.className = 'text-xs font-semibold uppercase tracking-wider text-emerald-400';
+                statusIndicator.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+                statusIndicator.parentElement.className = 'flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500/20';
+            } else if (data.status === 'Paused') {
+                statusText.textContent = 'Paused';
+                statusText.className = 'text-xs font-semibold uppercase tracking-wider text-amber-400';
+                statusIndicator.className = 'w-2 h-2 rounded-full bg-amber-400';
+                statusIndicator.parentElement.className = 'flex items-center justify-center w-4 h-4 rounded-full bg-amber-500/20';
+            }
+
+            showOverlay();
+        }
+
+        function showOverlay() {
+            container.classList.remove('hidden-state');
+            container.classList.add('visible-state');
+        }
+
+        function hideOverlay() {
+            container.classList.remove('visible-state');
+            container.classList.add('hidden-state');
+        }
+
+        // Start connection
+        connect();
+    </script>
+</body>
+</html>
