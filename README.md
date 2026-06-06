@@ -54,7 +54,7 @@ If you want to modify the project locally:
 ```bash
 git clone https://github.com/andrew-stclair/dbus-music-overlay.git
 cd dbus-music-overlay
-uv pip install -e .
+uv pipx install -e .
 ```
 
 Then you can run `dbus-music-overlay` to test your changes.
