@@ -4,7 +4,7 @@ A modern, glassmorphic OBS Studio browser overlay that dynamically displays curr
 
 The overlay runs a local, lightweight Python server using FastAPI and WebSockets, connecting directly to your active media players (like Spotify, Firefox, VLC, or Plasma Browser Integration). When music plays, a sleek UI card smoothly slides onto your OBS stream. When playback stops, it disappears cleanly.
 
-![D-Bus Music Overlay Demo](https://raw.githubusercontent.com/andrew-stclair/OBS-D-Bus-Music-Overlay/main/screenshot.png) *(Note: Placeholder for screenshot)*
+![D-Bus Music Overlay Demo](images/preview.png)
 
 ## Features
 - **Real-time Updates**: Powered by D-Bus and WebSockets for instant metadata changes.
