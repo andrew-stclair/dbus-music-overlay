@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "A Browser-based Music Overlay for OBS Studio using D-Bus MPRIS data."
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "MIT"}
+license = {text = "GPL-2.0"}
 authors = [
     {name = "Antigravity"}
 ]
