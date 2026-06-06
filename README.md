@@ -43,7 +43,7 @@ pipx upgrade dbus-music-overlay
 2. Open **OBS Studio**.
 3. Under your desired scene, add a new **Browser Source**.
 4. Set the **URL** to: `http://localhost:8000`
-5. Set the **Width** to `500` and **Height** to `150` (or leave it at default, it will scale).
+5. Set the **Width** to `430` and **Height** to `160` (or leave it at default, it will scale).
 6. **Important**: Delete any text inside the "Custom CSS" box in OBS to ensure the transparent background works correctly.
 7. Play music on your PC. The overlay should appear instantly in OBS!
 
