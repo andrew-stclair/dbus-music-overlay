@@ -23,6 +23,18 @@ class MPRISMonitor:
             "artUrl": ""
         }
 
+    def is_ignored_player(self, player_name: str) -> bool:
+        ignored_patterns = [
+            "firefox.instance",
+            "chromium.instance",
+            "chrome.instance",
+            "brave.instance",
+            "vivaldi.instance",
+            "edge.instance",
+            "opera.instance"
+        ]
+        return any(pattern in player_name.lower() for pattern in ignored_patterns)
+
     async def start(self):
         """Connects to the session bus and starts monitoring all players."""
         self.bus = await MessageBus(bus_type=BusType.SESSION).connect()
@@ -36,10 +48,13 @@ class MPRISMonitor:
             mpris_names = [name for name in names if name.startswith('org.mpris.MediaPlayer2.')]
             
             for name in mpris_names:
-                asyncio.create_task(self.attach_to_player(name))
+                if not self.is_ignored_player(name):
+                    asyncio.create_task(self.attach_to_player(name))
 
             def on_name_owner_changed(name: str, old_owner: str, new_owner: str):
                 if name.startswith('org.mpris.MediaPlayer2.'):
+                    if self.is_ignored_player(name):
+                        return
                     if new_owner and name not in self.players:
                         asyncio.create_task(self.attach_to_player(name))
                     elif not new_owner and name in self.players:
@@ -131,12 +146,6 @@ class MPRISMonitor:
             # Base score is the unix timestamp (newer is higher)
             score = data["last_active"]
             
-            # Tie-breakers for events that occur at roughly the same time (e.g. duplicate DBus services)
-            # Native browser MPRIS often duplicates Plasma Browser Integration but provides worse metadata.
-            # We penalize them by 0.5 seconds so Plasma Integration wins simultaneous updates.
-            if "firefox.instance" in player_name or "chromium.instance" in player_name:
-                score -= 0.5
-                
             metadata = data.get("metadata", {})
             
             def get_val(m, key):

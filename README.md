@@ -15,9 +15,7 @@ The overlay runs a local, lightweight Python server using FastAPI and WebSockets
 ## Requirements
 - Python 3.10+
 - A Linux environment with an active D-Bus session and an MPRIS-compatible media player (e.g., KDE Plasma, GNOME, etc.)
-
-## Recommendations
-- KDE Plasma Integration (Or similar rich media playback reporting extension for your browser)
+- KDE Plasma Integration browser extension (Or similar rich media playback reporting extension for your browser)
 
 ## Installation
 
