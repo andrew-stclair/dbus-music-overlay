@@ -16,6 +16,9 @@ The overlay runs a local, lightweight Python server using FastAPI and WebSockets
 - Python 3.10+
 - A Linux environment with an active D-Bus session and an MPRIS-compatible media player (e.g., KDE Plasma, GNOME, etc.)
 
+## Recommendations
+- KDE Plasma Integration (Or similar rich media playback reporting extension for your browser)
+
 ## Installation
 
 The recommended way to install and run the application is using [pipx](https://pipx.pypa.io/stable/). `pipx` installs Python CLI tools into isolated environments, preventing dependency conflicts.

@@ -126,18 +126,43 @@ class MPRISMonitor:
         """
         Determines which player should currently be displayed based on state and recency.
         """
-        # 1. Look for all 'Playing' players, sort by most recently active
+        def get_score(item):
+            player_name, data = item
+            # Base score is the unix timestamp (newer is higher)
+            score = data["last_active"]
+            
+            # Tie-breakers for events that occur at roughly the same time (e.g. duplicate DBus services)
+            # Native browser MPRIS often duplicates Plasma Browser Integration but provides worse metadata.
+            # We penalize them by 0.5 seconds so Plasma Integration wins simultaneous updates.
+            if "firefox.instance" in player_name or "chromium.instance" in player_name:
+                score -= 0.5
+                
+            metadata = data.get("metadata", {})
+            
+            def get_val(m, key):
+                val = m.get(key)
+                return val.value if val else None
+                
+            # Give a tiny 100ms boost if they provide rich metadata
+            if get_val(metadata, 'mpris:artUrl'):
+                score += 0.1
+            if get_val(metadata, 'xesam:artist'):
+                score += 0.1
+                
+            return score
+
+        # 1. Look for all 'Playing' players, sort by smart score
         playing = [(p, data) for p, data in self.players.items() if data["status"] == "Playing"]
         if playing:
-            playing.sort(key=lambda x: x[1]["last_active"], reverse=True)
+            playing.sort(key=get_score, reverse=True)
             self.current_player = playing[0][0]
             self.broadcast_player_state(self.current_player)
             return
             
-        # 2. Look for all 'Paused' players, sort by most recently active
+        # 2. Look for all 'Paused' players, sort by smart score
         paused = [(p, data) for p, data in self.players.items() if data["status"] == "Paused"]
         if paused:
-            paused.sort(key=lambda x: x[1]["last_active"], reverse=True)
+            paused.sort(key=get_score, reverse=True)
             self.current_player = paused[0][0]
             self.broadcast_player_state(self.current_player)
             return
